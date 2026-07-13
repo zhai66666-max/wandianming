@@ -1,0 +1,26 @@
+name: Daily Check-in Report
+
+on:
+  schedule:
+    # 每天北京时间 23:00 (UTC 15:00)
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install pandas openpyxl
+
+      - name: Generate and send daily report
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          MONITOR_API_KEY: ${{ secrets.MONITOR_API_KEY }}
+          QQ_SENDER_EMAIL: ${{ secrets.QQ_SENDER_EMAIL }}
+          QQ_AUTH_CODE: ${{ secrets.QQ_AUTH_CODE }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: python .github/scripts/daily_report.py

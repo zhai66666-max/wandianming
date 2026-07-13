@@ -426,3 +426,92 @@ textarea:focus {
     color: #ccc;
     text-decoration: line-through;
 }
+
+/* ===== 签到统计栏 ===== */
+.stats-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #fff;
+    border-radius: 10px;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.stats-bar strong {
+    font-size: 18px;
+}
+
+/* ===== 底部已签到 ===== */
+.bottom-bar {
+    margin-top: 16px;
+    text-align: center;
+}
+
+.btn-toggle {
+    padding: 10px 20px;
+    font-size: 14px;
+    color: #666;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.checked-list {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px;
+    background: #f9f9f9;
+    border-radius: 10px;
+}
+
+.checked-list.hidden {
+    display: none;
+}
+
+.checked-tag {
+    background: #e8f5e9;
+    color: #2e7d32;
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+}
+
+.checked-tag small {
+    color: #888;
+    font-size: 11px;
+}
+
+/* ===== 签到记录表格 ===== */
+.records-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+.records-table th {
+    background: #f5f5f5;
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #ddd;
+}
+
+.records-table td {
+    padding: 6px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.records-table .in {
+    color: #4caf50;
+    font-weight: 600;
+}
+
+.records-table .out {
+    color: #f44336;
+}

@@ -13,6 +13,12 @@
             <p class="date">{{ today }}</p>
         </div>
 
+        <!-- 签到统计 -->
+        <div class="stats-bar">
+            <span>✅ 已签到 <strong id="checkedCount">0</strong> / {{ persons|length }}</span>
+            <span id="remainHint" style="color:#f44336;">还剩 <strong id="remainCount">{{ persons|length }}</strong> 人</span>
+        </div>
+
         <div id="result" class="result hidden"></div>
 
         <div class="search-box">
@@ -31,15 +37,21 @@
             {% endfor %}
         </div>
 
-        <div id="noResult" class="no-result hidden">
-            未找到匹配的人员
-        </div>
+        <div id="noResult" class="no-result hidden">未找到匹配的人员</div>
 
         <div id="confirmArea" class="confirm-area hidden">
             <p>确认签到：<strong id="selectedName"></strong></p>
-            <p class="confirm-sid" id="selectedSid" style="color:#888;font-size:14px;"></p>
+            <p id="selectedSid" style="color:#888;font-size:14px;"></p>
             <button id="confirmBtn" class="btn-confirm">✅ 确认签到</button>
             <button id="cancelBtn" class="btn-cancel">取消</button>
+        </div>
+
+        <!-- 底部：显示已签到开关 + 已签到列表 -->
+        <div class="bottom-bar">
+            <button id="toggleChecked" class="btn-toggle" onclick="toggleChecked()">
+                👁 显示已签到 (<span id="checkedTotal">0</span>)
+            </button>
+            <div id="checkedList" class="checked-list hidden"></div>
         </div>
     </div>
 
@@ -50,69 +62,112 @@
         const noResult = document.getElementById('noResult');
         const confirmArea = document.getElementById('confirmArea');
         const selectedNameEl = document.getElementById('selectedName');
+        const selectedSidEl = document.getElementById('selectedSid');
         const confirmBtn = document.getElementById('confirmBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const resultEl = document.getElementById('result');
         const items = document.querySelectorAll('.name-item');
+        const totalCount = items.length;
 
         let selectedId = null;
         let selectedName = '';
+        let checkedSet = new Set(); // 已签到的 person_id
+        let showChecked = false;
 
-        // 搜索过滤
-        searchInput.addEventListener('input', function() {
-            const query = this.value.toLowerCase().trim();
+        // ===== 搜索 =====
+        function doFilter() {
+            const query = searchInput.value.toLowerCase().trim();
             let visible = 0;
             items.forEach(item => {
+                const id = item.dataset.id;
                 const name = item.dataset.name.toLowerCase();
                 const sid = (item.dataset.sid || '').toLowerCase();
-                if (!query || name.includes(query) || sid.includes(query)) {
+                const isChecked = checkedSet.has(id);
+
+                // 已签到的默认隐藏（除非开启了显示）
+                const hideByCheck = isChecked && !showChecked;
+                const hideBySearch = query && !name.includes(query) && !sid.includes(query);
+
+                if (hideByCheck || hideBySearch) {
+                    item.style.display = 'none';
+                } else {
                     item.style.display = '';
                     visible++;
-                } else {
-                    item.style.display = 'none';
                 }
             });
             noResult.classList.toggle('hidden', visible > 0 || !query);
-            // 搜索时隐藏确认区域
             if (query) {
                 confirmArea.classList.add('hidden');
                 selectedId = null;
             }
-        });
+        }
 
-        // 选中人员
+        searchInput.addEventListener('input', doFilter);
+
+        // ===== 加载今日已签到状态 =====
+        async function loadTodayStatus() {
+            try {
+                const resp = await fetch('/api/checkins/today');
+                const data = await resp.json();
+                data.forEach(c => checkedSet.add(String(c.person_id)));
+                updateStats();
+                doFilter();
+                renderCheckedList(data);
+            } catch(e) {}
+        }
+
+        function updateStats() {
+            const checked = checkedSet.size;
+            document.getElementById('checkedCount').textContent = checked;
+            document.getElementById('remainCount').textContent = totalCount - checked;
+            document.getElementById('checkedTotal').textContent = checked;
+
+            if (checked >= totalCount) {
+                document.getElementById('remainHint').innerHTML = '<span style="color:#4caf50;">🎉 全部签到完成！</span>';
+            }
+            if (checked > 0) {
+                document.getElementById('toggleChecked').style.display = '';
+            }
+        }
+
+        function renderCheckedList(records) {
+            const el = document.getElementById('checkedList');
+            if (records.length === 0) {
+                el.innerHTML = '<p style="color:#999;text-align:center;padding:8px;">暂无签到记录</p>';
+                return;
+            }
+            el.innerHTML = records.map(r => `
+                <span class="checked-tag">${r.name} <small>${r.time || ''}</small></span>
+            `).join('');
+        }
+
+        // ===== 选中 =====
         nameList.addEventListener('click', function(e) {
             const btn = e.target.closest('.name-item');
             if (!btn) return;
+            if (checkedSet.has(btn.dataset.id)) return; // 已签到不可再选
 
-            // 高亮选中
             items.forEach(i => i.classList.remove('selected'));
             btn.classList.add('selected');
-
             selectedId = btn.dataset.id;
             selectedName = btn.dataset.name;
             selectedNameEl.textContent = selectedName;
-            const sidEl = document.getElementById('selectedSid');
-            sidEl.textContent = btn.dataset.sid || '';
-            sidEl.style.display = btn.dataset.sid ? '' : 'none';
+            selectedSidEl.textContent = btn.dataset.sid || '';
+            selectedSidEl.style.display = btn.dataset.sid ? '' : 'none';
             confirmArea.classList.remove('hidden');
             confirmArea.scrollIntoView({ behavior: 'smooth' });
-
-            // 隐藏结果提示
             resultEl.classList.add('hidden');
         });
 
-        // 取消选择
         cancelBtn.addEventListener('click', function() {
             confirmArea.classList.add('hidden');
             selectedId = null;
             items.forEach(i => i.classList.remove('selected'));
         });
 
-        // 确认签到
+        // ===== 签到 =====
         confirmBtn.addEventListener('click', async function() {
             if (!selectedId) return;
-
             confirmBtn.disabled = true;
             confirmBtn.textContent = '签到中...';
 
@@ -131,47 +186,39 @@
                         <div class="check-mark">✅</div>
                         <div class="result-name">${data.data.name}</div>
                         <div class="result-time">签到时间: ${data.data.time}</div>
-                        <div class="result-msg">${data.message}</div>
                     `;
-                    // 标记该项已签到
-                    items.forEach(i => {
-                        if (i.dataset.id == selectedId) {
-                            i.classList.add('checked-in');
-                            i.querySelector('.item-name').textContent = i.dataset.name + ' ✓ 已签到';
-                        }
-                    });
-                    confirmArea.classList.add('hidden');
+                    // 标记已签到 → 从列表隐藏
+                    checkedSet.add(String(selectedId));
+                    updateStats();
+                    doFilter();
+                    // 更新已签到列表
+                    loadTodayStatus();
                 } else {
                     resultEl.className = 'result error';
                     resultEl.innerHTML = `<div class="result-msg">${data.message}</div>`;
                 }
+                confirmArea.classList.add('hidden');
             } catch (err) {
                 resultEl.classList.remove('hidden');
                 resultEl.className = 'result error';
                 resultEl.innerHTML = '<div class="result-msg">网络错误，请重试</div>';
             }
-
             confirmBtn.disabled = false;
             confirmBtn.textContent = '✅ 确认签到';
+            selectedId = null;
         });
 
-        // 记忆上次选择的 ID（localStorage）
-        const lastId = localStorage.getItem('lastCheckinId');
-        if (lastId) {
-            const lastItem = document.querySelector(`[data-id="${lastId}"]`);
-            if (lastItem) {
-                lastItem.scrollIntoView({ block: 'center' });
-                lastItem.style.background = '#fff9c4';
-            }
-        }
+        // ===== 显示/隐藏已签到 =====
+        window.toggleChecked = function() {
+            showChecked = !showChecked;
+            document.getElementById('checkedList').classList.toggle('hidden', !showChecked);
+            document.getElementById('toggleChecked').textContent =
+                showChecked ? '🙈 隐藏已签到' : `👁 显示已签到 (${checkedSet.size})`;
+            doFilter();
+        };
 
-        // 成功后存储
-        const origConfirm = confirmBtn.onclick;
-        confirmBtn.addEventListener('click', function() {
-            if (selectedId) {
-                localStorage.setItem('lastCheckinId', selectedId);
-            }
-        });
+        // 页面加载
+        loadTodayStatus();
     })();
     </script>
 </body>

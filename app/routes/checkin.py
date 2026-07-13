@@ -59,6 +59,53 @@ def do_checkin():
     })
 
 
+@checkin_bp.route('/api/checkins/today')
+def today_checkins():
+    """获取今日签到记录"""
+    today = date.today()
+    records = Checkin.query.filter_by(check_date=today).order_by(Checkin.checked_at.desc()).all()
+    return jsonify([{
+        'person_id': r.person_id,
+        'name': r.person.name,
+        'student_id': r.person.student_id,
+        'time': r.checked_at.strftime('%H:%M:%S') if r.checked_at else '',
+    } for r in records])
+
+
+@checkin_bp.route('/api/checkins/export')
+def export_checkins():
+    """导出签到数据为 JSON（供 GitHub Actions 生成 Excel）"""
+    from flask import current_app
+    api_key = request.args.get('key', '')
+    if api_key != current_app.config['MONITOR_API_KEY']:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    target_date = request.args.get('date', date.today().isoformat())
+    records = Checkin.query.filter_by(check_date=target_date).order_by(Checkin.checked_at.asc()).all()
+    all_persons = Person.query.filter_by(is_active=True).order_by(Person.name).all()
+
+    checked_dict = {r.person_id: r for r in records}
+
+    result = []
+    for p in all_persons:
+        r = checked_dict.get(p.id)
+        result.append({
+            'name': p.name,
+            'student_id': p.student_id,
+            'department': p.department,
+            'checked_in': r is not None,
+            'time': r.checked_at.strftime('%H:%M:%S') if r and r.checked_at else '',
+        })
+
+    return jsonify({
+        'date': target_date,
+        'total': len(all_persons),
+        'checked': len(records),
+        'unchecked': len(all_persons) - len(records),
+        'records': result,
+    })
+
+
 @checkin_bp.route('/api/status')
 def checkin_status():
     """查询今日签到状态"""

@@ -61,6 +61,12 @@
             {% endif %}
         </div>
 
+        <!-- 今日签到记录 -->
+        <div class="section">
+            <h2>📝 今日签到记录 <span style="font-weight:400;font-size:14px;color:#888;">({{ today_checked }}人)</span></h2>
+            <div id="todayRecords">加载中...</div>
+        </div>
+
         <!-- 导入名单 -->
         <div class="section">
             <h2>📥 导入名单</h2>
@@ -152,6 +158,36 @@
             alert(data.message);
         }
     }
+
+    async function loadTodayRecords() {
+        try {
+            const resp = await fetch('/api/checkins/today');
+            const records = await resp.json();
+            const el = document.getElementById('todayRecords');
+            if (records.length === 0) {
+                el.innerHTML = '<p style="color:#999;text-align:center;padding:16px;">暂无签到记录</p>';
+                return;
+            }
+            el.innerHTML = `
+                <table class="records-table">
+                    <tr><th>#</th><th>姓名</th><th>学号</th><th>签到时间</th></tr>
+                    ${records.map((r, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td class="in">${r.name}</td>
+                            <td>${r.student_id || '-'}</td>
+                            <td>${r.time}</td>
+                        </tr>
+                    `).join('')}
+                </table>`;
+        } catch(e) {
+            document.getElementById('todayRecords').innerHTML = '<p style="color:#f44336;">加载失败</p>';
+        }
+    }
+
+    loadTodayRecords();
+    // 每30秒刷新
+    setInterval(loadTodayRecords, 30000);
     </script>
 </body>
 </html>

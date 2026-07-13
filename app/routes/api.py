@@ -30,3 +30,18 @@ def trigger_monitor():
 def ping():
     """保活端点（防止 Render 休眠）"""
     return jsonify({'status': 'ok'})
+
+
+@api_bp.route('/debug', methods=['GET'])
+def debug():
+    """调试端点：查看数据库类型和状态"""
+    from app import db
+    from app.models import Person
+    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    db_type = 'postgresql' if 'postgresql' in db_uri else 'sqlite'
+    total = Person.query.count()
+    return jsonify({
+        'db_type': db_type,
+        'db_uri_prefix': db_uri[:30] + '...' if len(db_uri) > 30 else db_uri,
+        'total_persons': total,
+    })

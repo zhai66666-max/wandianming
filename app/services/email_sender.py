@@ -67,7 +67,7 @@ def send_absence_report(absent_persons, start_date: date, end_date: date):
     msg.attach(MIMEText(html_body, 'html', 'utf-8'))
 
     try:
-        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+        with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=15) as server:
             server.login(sender_email, auth_code)
             server.sendmail(sender_email, [admin_email], msg.as_string())
         print(f'[EMAIL] 邮件发送成功: {absent_count} 人缺勤报告 → {admin_email}')

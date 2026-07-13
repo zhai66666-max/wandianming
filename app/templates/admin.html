@@ -51,6 +51,13 @@
         <div class="section">
             <h2>⚠️ 今日未签到 ({{ unchecked }}人)</h2>
             {% if unchecked_persons %}
+            <!-- 可复制 @名单 -->
+            <div style="margin-bottom:12px;">
+                <textarea id="atList" readonly rows="3" style="font-size:13px;width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:8px;background:#fff9c4;resize:none;"
+                >{% for p in unchecked_persons %}@{{ p.name }} {% endfor %}</textarea>
+                <button onclick="copyAtList()" class="btn-secondary" style="margin-top:4px;">📋 复制 @名单</button>
+                <span id="copyMsg" style="color:#4caf50;font-size:13px;margin-left:8px;display:none;">已复制！</span>
+            </div>
             <div class="unchecked-list">
                 {% for p in unchecked_persons %}
                 <span class="unchecked-tag">{{ p.name }}{% if p.student_id %} ({{ p.student_id }}){% endif %}</span>
@@ -142,9 +149,14 @@
                     ${p.student_id ? ' - ' + p.student_id : ''}
                     ${p.department ? ' (' + p.department + ')' : ''}
                 </span>
-                <button onclick="togglePerson(${p.id})" class="btn-sm">
-                    ${p.is_active ? '停用' : '启用'}
-                </button>
+                <span>
+                    <button onclick="togglePerson(${p.id})" class="btn-sm">
+                        ${p.is_active ? '停用' : '启用'}
+                    </button>
+                    <button onclick="deletePerson(${p.id}, '${p.name}')" class="btn-sm" style="color:#f44336;border-color:#f44336;">
+                        删除
+                    </button>
+                </span>
             </div>
         `).join('');
     }
@@ -188,6 +200,35 @@
     loadTodayRecords();
     // 每30秒刷新
     setInterval(loadTodayRecords, 30000);
+
+    // 复制 @名单
+    window.copyAtList = function() {
+        const el = document.getElementById('atList');
+        el.select();
+        document.execCommand('copy');
+        // 移动端兼容
+        navigator.clipboard?.writeText(el.value);
+        document.getElementById('copyMsg').style.display = 'inline';
+        setTimeout(() => { document.getElementById('copyMsg').style.display = 'none'; }, 2000);
+    };
+
+    // 删除人员
+    window.deletePerson = async function(id, name) {
+        if (!confirm(`确定删除 ${name}？此操作不可撤销！`)) return;
+        try {
+            const resp = await fetch(`/admin/persons/${id}/delete`, { method: 'POST' });
+            const data = await resp.json();
+            if (data.success) {
+                alert(data.message);
+                loadPersons();
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        } catch(e) {
+            alert('删除失败');
+        }
+    };
     </script>
 </body>
 </html>

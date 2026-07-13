@@ -139,6 +139,27 @@ def toggle_person(person_id):
     })
 
 
+@admin_bp.route('/persons/<int:person_id>/delete', methods=['POST'])
+def delete_person(person_id):
+    """删除人员（同时删除其签到记录）"""
+    if not _check_auth():
+        return jsonify({'success': False, 'message': '未授权'}), 401
+
+    person = Person.query.get_or_404(person_id)
+    name = person.name
+
+    # 删除签到记录
+    Checkin.query.filter_by(person_id=person_id).delete()
+    # 删除人员
+    db.session.delete(person)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': f'{name} 已删除',
+    })
+
+
 @admin_bp.route('/logout')
 def logout():
     from flask import session

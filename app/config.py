@@ -6,10 +6,19 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key')
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL',
-        'sqlite:///' + os.path.join(os.path.dirname(os.path.dirname(__file__)), 'instance', 'rollcall.db')
-    )
+
+    # 数据库：优先使用 DATABASE_URL（如 Render PostgreSQL），否则用 SQLite
+    _db_url = os.environ.get('DATABASE_URL', '')
+    if _db_url:
+        # Render 提供的 PostgreSQL URL 以 postgres:// 开头，SQLAlchemy 需要 postgresql://
+        if _db_url.startswith('postgres://'):
+            _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+        SQLALCHEMY_DATABASE_URI = _db_url
+    else:
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), 'instance', 'rollcall.db'
+        )
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # QQ 邮箱

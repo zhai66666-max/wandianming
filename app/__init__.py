@@ -33,9 +33,11 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    # 配置 SQLite WAL 模式以支持并发写入
-    from sqlalchemy import text
-    with app.app_context():
-        db.session.execute(text('PRAGMA journal_mode=WAL'))
+    # SQLite 专属：配置 WAL 模式以支持并发写入
+    db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_uri.startswith('sqlite'):
+        from sqlalchemy import text
+        with app.app_context():
+            db.session.execute(text('PRAGMA journal_mode=WAL'))
 
     return app

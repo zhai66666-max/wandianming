@@ -68,6 +68,24 @@
             {% endif %}
         </div>
 
+        <!-- 近3天连续未打卡 -->
+        <div class="section">
+            <h2>🔴 近3天连续未打卡 ({{ absent_3days|length }}人)</h2>
+            {% if absent_3days %}
+            <textarea id="at3List" readonly rows="3" style="font-size:13px;width:100%;padding:8px;border:1px solid #ffcdd2;border-radius:8px;background:#fff5f5;resize:none;"
+            >{% for p in absent_3days %}@{{ p.name }} {% endfor %}</textarea>
+            <button onclick="copyAt3()" class="btn-secondary" style="margin-top:4px;">📋 复制 @名单</button>
+            <span id="copy3Msg" style="color:#4caf50;font-size:13px;margin-left:8px;display:none;">已复制！</span>
+            <div class="unchecked-list" style="margin-top:8px;">
+                {% for p in absent_3days %}
+                <span class="unchecked-tag">{{ p.name }}{% if p.student_id %} ({{ p.student_id }}){% endif %}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#4caf50;">✅ 近3天全员有签到</p>
+            {% endif %}
+        </div>
+
         <!-- 今日签到记录 -->
         <div class="section">
             <h2>📝 今日签到记录 <span style="font-weight:400;font-size:14px;color:#888;">({{ today_checked }}人)</span></h2>
@@ -200,6 +218,16 @@
     loadTodayRecords();
     // 每30秒刷新
     setInterval(loadTodayRecords, 30000);
+
+    // 复制近3天 @名单
+    window.copyAt3 = function() {
+        const el = document.getElementById('at3List');
+        el.select();
+        document.execCommand('copy');
+        navigator.clipboard?.writeText(el.value);
+        document.getElementById('copy3Msg').style.display = 'inline';
+        setTimeout(() => { document.getElementById('copy3Msg').style.display = 'none'; }, 2000);
+    };
 
     // 复制 @名单
     window.copyAtList = function() {

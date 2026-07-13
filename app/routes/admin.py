@@ -41,6 +41,19 @@ def dashboard():
         Person.id.notin_(checked_ids)
     ).order_by(Person.name).all()
 
+    # 近 3 天连续未打卡人员
+    from datetime import timedelta
+    three_days_ago = today - timedelta(days=3)
+    checked_3days = db.session.query(Checkin.person_id).filter(
+        Checkin.check_date >= three_days_ago,
+        Checkin.check_date <= today
+    ).distinct().all()
+    checked_3days_ids = {r[0] for r in checked_3days}
+    absent_3days = Person.query.filter(
+        Person.is_active == True,
+        Person.id.notin_(checked_3days_ids) if checked_3days_ids else True
+    ).order_by(Person.name).all()
+
     # 最近 7 天签到率
     daily_stats = []
     for i in range(6, -1, -1):
@@ -59,6 +72,7 @@ def dashboard():
         unchecked=unchecked,
         rate=rate,
         unchecked_persons=unchecked_persons,
+        absent_3days=absent_3days,
         daily_stats=daily_stats,
         today=today,
     )

@@ -10,26 +10,21 @@ jobs:
   monitor:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger monitoring check
-        run: |
-          curl -X POST "${{ secrets.APP_URL }}/api/monitor" \
-            -H "Authorization: Bearer ${{ secrets.MONITOR_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            --fail --silent --show-error \
-            --connect-timeout 30 \
-            --max-time 60
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run monitoring and send report
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          MONITOR_API_KEY: ${{ secrets.MONITOR_API_KEY }}
+          QQ_SENDER_EMAIL: ${{ secrets.QQ_SENDER_EMAIL }}
+          QQ_AUTH_CODE: ${{ secrets.QQ_AUTH_CODE }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: python .github/scripts/send_report.py
 
   ping:
     runs-on: ubuntu-latest
-    # 每 10 分钟 ping 一次，防止 Render 免费层休眠
-    # 取消下面注释以启用保活（仅 Render 免费层需要）
-    # schedule:
-    #   - cron: '*/10 * * * *'
     steps:
-      - name: Keep alive ping
-        if: false  # 默认禁用，需要时改为 true
+      - name: Keep alive ping (prevent Render sleep)
         run: |
-          curl -X GET "${{ secrets.APP_URL }}/api/ping" \
-            --fail --silent --show-error \
-            --connect-timeout 10 \
-            --max-time 15
+          curl -s "${{ secrets.APP_URL }}/api/ping" --max-time 10 || true

@@ -5,15 +5,14 @@ from app.models import Person, Checkin
 
 def run_monitoring(monitor_window_days=5):
     """
-    检查最近 N 天内完全未签到的人员，并发送邮件报告。
+    检查最近 N 天内完全未签到的人员。
 
     返回 dict:
         - total_active: 活跃人员总数
         - checked_in: 窗口内有签到的人数
         - absent: 完全未签到的人数
-        - absent_list: 缺勤人员列表
+        - absent_list: 缺勤人员列表 [{name, student_id, department}]
         - window_start, window_end: 监控窗口
-        - email_sent: 是否发送了邮件
     """
     today = date.today()
     start_date = today - timedelta(days=monitor_window_days)
@@ -33,7 +32,7 @@ def run_monitoring(monitor_window_days=5):
     absent_ids = all_ids - checked_ids
     absent_persons = [p for p in all_active if p.id in absent_ids]
 
-    result = {
+    return {
         'total_active': len(all_active),
         'checked_in': len(checked_ids),
         'absent': len(absent_persons),
@@ -43,13 +42,4 @@ def run_monitoring(monitor_window_days=5):
         ],
         'window_start': start_date.isoformat(),
         'window_end': today.isoformat(),
-        'email_sent': False,
     }
-
-    # 如果存在缺勤人员，发送邮件
-    if absent_persons:
-        from app.services.email_sender import send_absence_report
-        success = send_absence_report(absent_persons, start_date, today)
-        result['email_sent'] = success
-
-    return result

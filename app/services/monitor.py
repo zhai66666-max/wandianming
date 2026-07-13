@@ -1,6 +1,7 @@
-from datetime import date, timedelta
+from datetime import timedelta
 from app import db
 from app.models import Person, Checkin
+from app.beijing_time import beijing_today
 
 
 def run_monitoring(monitor_window_days=5):
@@ -14,7 +15,7 @@ def run_monitoring(monitor_window_days=5):
         - absent_list: 缺勤人员列表 [{name, student_id, department}]
         - window_start, window_end: 监控窗口
     """
-    today = date.today()
+    today = beijing_today()
     start_date = today - timedelta(days=monitor_window_days)
 
     # 活跃人员

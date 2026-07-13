@@ -1,5 +1,5 @@
-from datetime import date, datetime
 from app import db
+from app.beijing_time import beijing_now, beijing_today
 
 
 class Person(db.Model):
@@ -10,7 +10,7 @@ class Person(db.Model):
     student_id = db.Column(db.String(32), default='', index=True)
     department = db.Column(db.String(128), default='')
     is_active = db.Column(db.Boolean, default=True, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=beijing_now)
 
     checkins = db.relationship('Checkin', backref='person', lazy='dynamic')
 
@@ -25,8 +25,7 @@ class Person(db.Model):
 
     def checked_in_today(self):
         """检查今天是否已签到"""
-        today = date.today()
-        return self.checkins.filter_by(check_date=today).first() is not None
+        return self.checkins.filter_by(check_date=beijing_today()).first() is not None
 
 
 class Checkin(db.Model):
@@ -34,8 +33,8 @@ class Checkin(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     person_id = db.Column(db.Integer, db.ForeignKey('persons.id'), nullable=False, index=True)
-    check_date = db.Column(db.Date, nullable=False, default=date.today, index=True)
-    checked_at = db.Column(db.DateTime, default=datetime.utcnow)
+    check_date = db.Column(db.Date, nullable=False, default=beijing_today, index=True)
+    checked_at = db.Column(db.DateTime, default=beijing_now)
 
     __table_args__ = (
         db.UniqueConstraint('person_id', 'check_date', name='uq_person_date'),

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, current_app
-from datetime import date
 from app import db
 from app.models import Person, Checkin
+from app.beijing_time import beijing_today
 
 checkin_bp = Blueprint('checkin', __name__)
 
@@ -10,7 +10,7 @@ checkin_bp = Blueprint('checkin', __name__)
 def index():
     """签到页面"""
     persons = Person.query.filter_by(is_active=True).order_by(Person.name).all()
-    today = date.today().isoformat()
+    today = beijing_today().isoformat()
     return render_template('checkin.html', persons=persons, today=today)
 
 
@@ -35,7 +35,7 @@ def do_checkin():
         return jsonify({'success': False, 'message': '人员不存在或已停用'}), 400
 
     # 检查今天是否已签到
-    today = date.today()
+    today = beijing_today()
     existing = Checkin.query.filter_by(person_id=person_id, check_date=today).first()
     if existing:
         return jsonify({
@@ -62,7 +62,7 @@ def do_checkin():
 @checkin_bp.route('/api/checkins/today')
 def today_checkins():
     """获取今日签到记录"""
-    today = date.today()
+    today = beijing_today()
     records = Checkin.query.filter_by(check_date=today).order_by(Checkin.checked_at.desc()).all()
     return jsonify([{
         'person_id': r.person_id,
@@ -80,7 +80,7 @@ def export_checkins():
     if api_key != current_app.config['MONITOR_API_KEY']:
         return jsonify({'error': 'unauthorized'}), 401
 
-    target_date = request.args.get('date', date.today().isoformat())
+    target_date = request.args.get('date', beijing_today().isoformat())
     records = Checkin.query.filter_by(check_date=target_date).order_by(Checkin.checked_at.asc()).all()
     all_persons = Person.query.filter_by(is_active=True).order_by(Person.name).all()
 
@@ -113,7 +113,7 @@ def checkin_status():
     if not person_id:
         return jsonify({'success': False, 'message': '缺少 person_id'}), 400
 
-    today = date.today()
+    today = beijing_today()
     checkin = Checkin.query.filter_by(person_id=person_id, check_date=today).first()
 
     if checkin:

@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
-from datetime import date, timedelta
+from datetime import timedelta
 from app import db
 from app.models import Person, Checkin
+from app.beijing_time import beijing_today
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -25,7 +26,7 @@ def dashboard():
     if not _check_auth():
         return render_template('admin_login.html')
 
-    today = date.today()
+    today = beijing_today()
 
     # 统计
     total = Person.query.filter_by(is_active=True).count()

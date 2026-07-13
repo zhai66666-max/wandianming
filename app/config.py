@@ -35,4 +35,4 @@ class Config:
     MONITOR_API_KEY = os.environ.get('MONITOR_API_KEY', '')
 
     # 监控
-    MONITOR_WINDOW_DAYS = int(os.environ.get('MONITOR_WINDOW_DAYS', '5'))
+    MONITOR_WINDOW_DAYS = int(os.environ.get('MONITOR_WINDOW_DAYS', '3'))

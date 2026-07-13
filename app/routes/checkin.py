@@ -106,6 +106,22 @@ def export_checkins():
     })
 
 
+@checkin_bp.route('/api/checkins/all')
+def all_checkins():
+    """导出全部签到记录（备份用）"""
+    from flask import current_app
+    api_key = request.args.get('key', '')
+    if api_key != current_app.config['MONITOR_API_KEY']:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    records = Checkin.query.order_by(Checkin.check_date.desc(), Checkin.checked_at.desc()).all()
+    return jsonify([{
+        'person_id': r.person_id,
+        'check_date': r.check_date.isoformat(),
+        'checked_at': r.checked_at.isoformat() if r.checked_at else '',
+    } for r in records])
+
+
 @checkin_bp.route('/api/status')
 def checkin_status():
     """查询今日签到状态"""

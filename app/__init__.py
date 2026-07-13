@@ -40,6 +40,13 @@ def create_app():
             import logging
             logging.getLogger(__name__).info(f'自动播种 {seeded} 人')
 
+        # 从备份恢复签到记录
+        from app.restore import restore_checkins
+        restored = restore_checkins(db)
+        if restored:
+            import logging
+            logging.getLogger(__name__).info(f'恢复签到 {restored} 条')
+
     # SQLite 专属：配置 WAL 模式以支持并发写入
     db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
     if db_uri.startswith('sqlite'):

@@ -1,0 +1,32 @@
+name: Backup Check-in Data
+
+on:
+  schedule:
+    # 每 15 分钟备份一次
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch check-in data from Render
+        run: |
+          curl -s "${{ secrets.APP_URL }}/api/checkins/all?key=${{ secrets.MONITOR_API_KEY }}" \
+            --max-time 30 -o data/backup.json
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "backup-bot"
+          git config user.email "backup@bot.com"
+          git add data/backup.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "backup: check-in data $(date -u +%Y-%m-%dT%H:%M)"
+            git push
+            echo "Backup pushed"
+          fi

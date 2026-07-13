@@ -1,0 +1,35 @@
+name: Daily Roll Call Monitor
+
+on:
+  schedule:
+    # 每天北京时间 22:00 (UTC 14:00)
+    - cron: '0 14 * * *'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger monitoring check
+        run: |
+          curl -X POST "${{ secrets.APP_URL }}/api/monitor" \
+            -H "Authorization: Bearer ${{ secrets.MONITOR_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            --fail --silent --show-error \
+            --connect-timeout 30 \
+            --max-time 60
+
+  ping:
+    runs-on: ubuntu-latest
+    # 每 10 分钟 ping 一次，防止 Render 免费层休眠
+    # 取消下面注释以启用保活（仅 Render 免费层需要）
+    # schedule:
+    #   - cron: '*/10 * * * *'
+    steps:
+      - name: Keep alive ping
+        if: false  # 默认禁用，需要时改为 true
+        run: |
+          curl -X GET "${{ secrets.APP_URL }}/api/ping" \
+            --fail --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 15

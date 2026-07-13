@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晚点名签到</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 晚点名签到</h1>
+            <p class="date">{{ today }}</p>
+        </div>
+
+        <div id="result" class="result hidden"></div>
+
+        <div class="search-box">
+            <input type="text" id="search" placeholder="🔍 搜索姓名或学号..."
+                   autocomplete="off" autofocus>
+        </div>
+
+        <div class="name-list" id="nameList">
+            {% for p in persons %}
+            <button class="name-item" data-id="{{ p.id }}" data-name="{{ p.name }}" data-sid="{{ p.student_id }}">
+                <span class="item-name">{{ p.name }}</span>
+                {% if p.student_id %}
+                <span class="item-sid">{{ p.student_id }}</span>
+                {% endif %}
+            </button>
+            {% endfor %}
+        </div>
+
+        <div id="noResult" class="no-result hidden">
+            未找到匹配的人员
+        </div>
+
+        <div id="confirmArea" class="confirm-area hidden">
+            <p>确认签到：<strong id="selectedName"></strong></p>
+            <p class="confirm-sid" id="selectedSid" style="color:#888;font-size:14px;"></p>
+            <button id="confirmBtn" class="btn-confirm">✅ 确认签到</button>
+            <button id="cancelBtn" class="btn-cancel">取消</button>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const searchInput = document.getElementById('search');
+        const nameList = document.getElementById('nameList');
+        const noResult = document.getElementById('noResult');
+        const confirmArea = document.getElementById('confirmArea');
+        const selectedNameEl = document.getElementById('selectedName');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const resultEl = document.getElementById('result');
+        const items = document.querySelectorAll('.name-item');
+
+        let selectedId = null;
+        let selectedName = '';
+
+        // 搜索过滤
+        searchInput.addEventListener('input', function() {
+            const query = this.value.toLowerCase().trim();
+            let visible = 0;
+            items.forEach(item => {
+                const name = item.dataset.name.toLowerCase();
+                const sid = (item.dataset.sid || '').toLowerCase();
+                if (!query || name.includes(query) || sid.includes(query)) {
+                    item.style.display = '';
+                    visible++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            noResult.classList.toggle('hidden', visible > 0 || !query);
+            // 搜索时隐藏确认区域
+            if (query) {
+                confirmArea.classList.add('hidden');
+                selectedId = null;
+            }
+        });
+
+        // 选中人员
+        nameList.addEventListener('click', function(e) {
+            const btn = e.target.closest('.name-item');
+            if (!btn) return;
+
+            // 高亮选中
+            items.forEach(i => i.classList.remove('selected'));
+            btn.classList.add('selected');
+
+            selectedId = btn.dataset.id;
+            selectedName = btn.dataset.name;
+            selectedNameEl.textContent = selectedName;
+            const sidEl = document.getElementById('selectedSid');
+            sidEl.textContent = btn.dataset.sid || '';
+            sidEl.style.display = btn.dataset.sid ? '' : 'none';
+            confirmArea.classList.remove('hidden');
+            confirmArea.scrollIntoView({ behavior: 'smooth' });
+
+            // 隐藏结果提示
+            resultEl.classList.add('hidden');
+        });
+
+        // 取消选择
+        cancelBtn.addEventListener('click', function() {
+            confirmArea.classList.add('hidden');
+            selectedId = null;
+            items.forEach(i => i.classList.remove('selected'));
+        });
+
+        // 确认签到
+        confirmBtn.addEventListener('click', async function() {
+            if (!selectedId) return;
+
+            confirmBtn.disabled = true;
+            confirmBtn.textContent = '签到中...';
+
+            try {
+                const resp = await fetch('/api/checkin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ person_id: parseInt(selectedId) }),
+                });
+                const data = await resp.json();
+
+                resultEl.classList.remove('hidden');
+                if (data.success) {
+                    resultEl.className = 'result success';
+                    resultEl.innerHTML = `
+                        <div class="check-mark">✅</div>
+                        <div class="result-name">${data.data.name}</div>
+                        <div class="result-time">签到时间: ${data.data.time}</div>
+                        <div class="result-msg">${data.message}</div>
+                    `;
+                    // 标记该项已签到
+                    items.forEach(i => {
+                        if (i.dataset.id == selectedId) {
+                            i.classList.add('checked-in');
+                            i.querySelector('.item-name').textContent = i.dataset.name + ' ✓ 已签到';
+                        }
+                    });
+                    confirmArea.classList.add('hidden');
+                } else {
+                    resultEl.className = 'result error';
+                    resultEl.innerHTML = `<div class="result-msg">${data.message}</div>`;
+                }
+            } catch (err) {
+                resultEl.classList.remove('hidden');
+                resultEl.className = 'result error';
+                resultEl.innerHTML = '<div class="result-msg">网络错误，请重试</div>';
+            }
+
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '✅ 确认签到';
+        });
+
+        // 记忆上次选择的 ID（localStorage）
+        const lastId = localStorage.getItem('lastCheckinId');
+        if (lastId) {
+            const lastItem = document.querySelector(`[data-id="${lastId}"]`);
+            if (lastItem) {
+                lastItem.scrollIntoView({ block: 'center' });
+                lastItem.style.background = '#fff9c4';
+            }
+        }
+
+        // 成功后存储
+        const origConfirm = confirmBtn.onclick;
+        confirmBtn.addEventListener('click', function() {
+            if (selectedId) {
+                localStorage.setItem('lastCheckinId', selectedId);
+            }
+        });
+    })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+[Unit]
+Description=Roll Call Check-in System
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/roll-call-system
+EnvironmentFile=/opt/roll-call-system/.env
+ExecStart=/opt/roll-call-system/venv/bin/gunicorn run:app \
+    --bind 127.0.0.1:8000 \
+    --workers 2 \
+    --timeout 30 \
+    --access-logfile /var/log/rollcall/access.log \
+    --error-logfile /var/log/rollcall/error.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

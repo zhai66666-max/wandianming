@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 晚点名签到</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 管理后台</h1>
+            <p class="date">{{ today }} | <a href="{{ url_for('admin.logout') }}">退出</a></p>
+        </div>
+
+        <!-- 今日概览 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-num">{{ total }}</div>
+                <div class="stat-label">总人数</div>
+            </div>
+            <div class="stat-card stat-green">
+                <div class="stat-num">{{ today_checked }}</div>
+                <div class="stat-label">已签到</div>
+            </div>
+            <div class="stat-card stat-red">
+                <div class="stat-num">{{ unchecked }}</div>
+                <div class="stat-label">未签到</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num">{{ rate }}%</div>
+                <div class="stat-label">签到率</div>
+            </div>
+        </div>
+
+        <!-- 最近 7 天趋势 -->
+        <div class="section">
+            <h2>📈 近 7 天签到趋势</h2>
+            <div class="chart-bar">
+                {% for s in daily_stats %}
+                <div class="bar-item" title="{{ s.date }}: {{ s.count }}人 ({{ s.rate }}%)">
+                    <div class="bar-fill" style="height: {{ s.rate }}%;"></div>
+                    <div class="bar-label">{{ s.date[-5:] }}</div>
+                    <div class="bar-val">{{ s.count }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 今日未签到 -->
+        <div class="section">
+            <h2>⚠️ 今日未签到 ({{ unchecked }}人)</h2>
+            {% if unchecked_persons %}
+            <div class="unchecked-list">
+                {% for p in unchecked_persons %}
+                <span class="unchecked-tag">{{ p.name }}{% if p.student_id %} ({{ p.student_id }}){% endif %}</span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p style="color:#4caf50;">🎉 全部签到完成！</p>
+            {% endif %}
+        </div>
+
+        <!-- 导入名单 -->
+        <div class="section">
+            <h2>📥 导入名单</h2>
+            <p class="hint">每行一个，逗号分隔：<code>姓名,学号,部门</code>（学号和部门可选）</p>
+            <textarea id="importData" rows="8" placeholder="张三,2023141440001,电气工程学院&#10;李四,2023141440002,电气工程学院&#10;王五"></textarea>
+            <button id="importBtn" class="btn-confirm" onclick="importRoster()">导入名单</button>
+            <div id="importResult" class="result hidden" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- 人员管理 -->
+        <div class="section">
+            <h2>👥 人员管理</h2>
+            <button onclick="loadPersons()" class="btn-secondary">刷新列表</button>
+            <div id="personList" style="margin-top:12px;"></div>
+        </div>
+    </div>
+
+    <script>
+    async function importRoster() {
+        const raw = document.getElementById('importData').value.trim();
+        if (!raw) return alert('请输入名单数据');
+
+        const lines = raw.split('\n').filter(l => l.trim());
+        const persons = lines.map(line => {
+            const parts = line.split(',');
+            return {
+                name: (parts[0] || '').trim(),
+                student_id: (parts[1] || '').trim(),
+                department: (parts[2] || '').trim(),
+            };
+        });
+
+        const btn = document.getElementById('importBtn');
+        btn.disabled = true;
+        btn.textContent = '导入中...';
+
+        try {
+            const resp = await fetch('/admin/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ persons }),
+            });
+            const data = await resp.json();
+            const el = document.getElementById('importResult');
+            el.classList.remove('hidden');
+            if (data.success) {
+                el.className = 'result success';
+                el.innerHTML = `<div class="result-msg">${data.message}</div>`;
+                if (data.errors.length > 0) {
+                    el.innerHTML += `<div style="font-size:12px;margin-top:8px;">${data.errors.join('<br>')}</div>`;
+                }
+                // 刷新页面统计
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                el.className = 'result error';
+                el.innerHTML = `<div class="result-msg">${data.message}</div>`;
+            }
+        } catch (err) {
+            alert('导入失败: ' + err.message);
+        }
+        btn.disabled = false;
+        btn.textContent = '导入名单';
+    }
+
+    async function loadPersons() {
+        const resp = await fetch('/admin/persons');
+        const persons = await resp.json();
+        const el = document.getElementById('personList');
+        el.innerHTML = persons.map(p => `
+            <div class="person-row">
+                <span class="${p.is_active ? '' : 'inactive'}">
+                    ${p.name}
+                    ${p.student_id ? ' - ' + p.student_id : ''}
+                    ${p.department ? ' (' + p.department + ')' : ''}
+                </span>
+                <button onclick="togglePerson(${p.id})" class="btn-sm">
+                    ${p.is_active ? '停用' : '启用'}
+                </button>
+            </div>
+        `).join('');
+    }
+
+    async function togglePerson(id) {
+        const resp = await fetch(`/admin/persons/${id}/toggle`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            loadPersons();
+        } else {
+            alert(data.message);
+        }
+    }
+    </script>
+</body>
+</html>

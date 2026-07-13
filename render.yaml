@@ -1,0 +1,22 @@
+# Render 部署配置 (render.com)
+services:
+  - type: web
+    name: roll-call-system
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app --bind 0.0.0.0:$PORT --workers 2
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: QQ_SENDER_EMAIL
+        sync: false
+      - key: QQ_AUTH_CODE
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: MONITOR_API_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11.0"

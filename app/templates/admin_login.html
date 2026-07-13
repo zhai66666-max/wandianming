@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 登录</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 管理后台</h1>
+        </div>
+        <form method="POST" class="login-form">
+            <label for="password">请输入管理密码</label>
+            <input type="password" id="password" name="password"
+                   placeholder="管理密码" required autofocus>
+            <button type="submit" class="btn-confirm" style="margin-top:16px;">登录</button>
+        </form>
+    </div>
+</body>
+</html>

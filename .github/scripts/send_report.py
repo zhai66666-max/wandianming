@@ -64,8 +64,10 @@ def main():
     sender = os.environ.get('QQ_SENDER_EMAIL', '')
     auth_code = os.environ.get('QQ_AUTH_CODE', '')
     receiver = os.environ.get('ADMIN_EMAIL', '')
+    # 支持多个邮箱，逗号分隔
+    receivers = [e.strip() for e in receiver.split(',') if e.strip()]
 
-    if not all([sender, auth_code, receiver]):
+    if not all([sender, auth_code]) or not receivers:
         print('❌ QQ 邮箱配置不完整')
         sys.exit(1)
 
@@ -100,14 +102,14 @@ def main():
     msg = MIMEMultipart('alternative')
     msg['Subject'] = f'[晚点名] 缺勤报告 - {start}至{end} - {absent}人未签到'
     msg['From'] = sender
-    msg['To'] = receiver
+    msg['To'] = ', '.join(receivers)
     msg.attach(MIMEText(html, 'html', 'utf-8'))
 
     try:
         with smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=15) as server:
             server.login(sender, auth_code)
-            server.sendmail(sender, [receiver], msg.as_string())
-        print(f'📧 邮件发送成功: {absent} 人缺勤报告 → {receiver}')
+            server.sendmail(sender, receivers, msg.as_string())
+        print(f'📧 邮件发送成功: {absent} 人缺勤报告 → {", ".join(receivers)}')
     except Exception as e:
         print(f'❌ 邮件发送失败: {e}')
         sys.exit(1)

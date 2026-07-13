@@ -32,6 +32,21 @@ def ping():
     return jsonify({'status': 'ok'})
 
 
+@api_bp.route('/seed', methods=['POST'])
+@require_api_key
+def force_seed():
+    """强制播种名单（需要 API Key）"""
+    from app import db
+    from app.seed import seed_if_empty
+    # 先清空再播种
+    from app.models import Person, Checkin
+    Checkin.query.delete()
+    Person.query.delete()
+    db.session.commit()
+    seeded = seed_if_empty(db)
+    return jsonify({'success': True, 'seeded': seeded})
+
+
 @api_bp.route('/debug', methods=['GET'])
 def debug():
     """调试端点：查看数据库类型和状态"""

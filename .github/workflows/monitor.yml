@@ -22,9 +22,3 @@ jobs:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: python .github/scripts/send_report.py
 
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Keep alive ping (prevent Render sleep)
-        run: |
-          curl -s "${{ secrets.APP_URL }}/api/ping" --max-time 10 || true

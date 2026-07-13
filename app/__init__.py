@@ -6,8 +6,18 @@ db = SQLAlchemy()
 
 
 def create_app():
+    import os
+
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # 确保 instance 目录存在
+    db_path = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+    if db_path.startswith('sqlite:///'):
+        db_file_path = db_path.replace('sqlite:///', '')
+        instance_dir = os.path.dirname(db_file_path)
+        if instance_dir:
+            os.makedirs(instance_dir, exist_ok=True)
 
     db.init_app(app)
 

@@ -10,7 +10,15 @@
     <div class="container">
         <div class="header">
             <h1>📊 管理后台</h1>
-            <p class="date">{{ today }} | <a href="{{ url_for('admin.logout') }}">退出</a></p>
+            <p class="date">
+                <a href="?date={{ yesterday }}">⬅ 前一天</a>
+                <strong>{{ view_date }}</strong>
+                {% if not is_today %}
+                <a href="?date={{ tomorrow }}">后一天 ➡</a>
+                {% endif %}
+                {% if not is_today %}<a href="?">(回到今天)</a>{% endif %}
+                | <a href="{{ url_for('admin.logout') }}">退出</a>
+            </p>
         </div>
 
         <!-- 今日概览 -->
@@ -189,9 +197,11 @@
         }
     }
 
+    const viewDate = '{{ view_date }}';
+
     async function loadTodayRecords() {
         try {
-            const resp = await fetch('/api/checkins/today');
+            const resp = await fetch('/api/checkins/today?date=' + viewDate);
             const records = await resp.json();
             const el = document.getElementById('todayRecords');
             if (records.length === 0) {

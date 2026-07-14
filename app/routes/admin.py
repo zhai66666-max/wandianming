@@ -26,7 +26,16 @@ def dashboard():
     if not _check_auth():
         return render_template('admin_login.html')
 
-    today = beijing_today()
+    # 支持查看历史日期
+    date_str = request.args.get('date', '')
+    if date_str:
+        try:
+            from datetime import datetime
+            today = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            today = beijing_today()
+    else:
+        today = beijing_today()
 
     # 统计
     total = Person.query.filter_by(is_active=True).count()
@@ -76,6 +85,10 @@ def dashboard():
         absent_3days=absent_3days,
         daily_stats=daily_stats,
         today=today,
+        view_date=today.isoformat(),
+        is_today=(today == beijing_today()),
+        yesterday=(today - timedelta(days=1)).isoformat(),
+        tomorrow=(today + timedelta(days=1)).isoformat(),
     )
 
 

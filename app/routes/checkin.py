@@ -61,9 +61,17 @@ def do_checkin():
 
 @checkin_bp.route('/api/checkins/today')
 def today_checkins():
-    """获取今日签到记录"""
-    today = beijing_today()
-    records = Checkin.query.filter_by(check_date=today).order_by(Checkin.checked_at.desc()).all()
+    """获取签到记录（默认今天，支持 ?date=YYYY-MM-DD）"""
+    date_str = request.args.get('date', '')
+    if date_str:
+        try:
+            from datetime import datetime
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            target_date = beijing_today()
+    else:
+        target_date = beijing_today()
+    records = Checkin.query.filter_by(check_date=target_date).order_by(Checkin.checked_at.desc()).all()
     return jsonify([{
         'person_id': r.person_id,
         'name': r.person.name,

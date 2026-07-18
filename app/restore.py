@@ -1,29 +1,45 @@
-"""从 GitHub 同步文件中恢复签到记录"""
+"""启动时从 GitHub data 分支下载签到记录并恢复"""
 import json
 import os
 from datetime import date, datetime
+from urllib.request import urlopen
+from urllib.error import URLError
 from app.models import Checkin
 
-
-DATA_FILE = os.path.join(
+# GitHub data 分支的 raw URL
+BACKUP_URL = 'https://raw.githubusercontent.com/zhai66666-max/wandianming/data/data/checkins.json'
+LOCAL_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)), 'data', 'checkins.json'
 )
 
 
-def restore_checkins(db):
-    """读取 data/checkins.json 恢复签到记录"""
-    if not os.path.exists(DATA_FILE):
-        return 0
+def _load_records():
+    """加载签到记录：优先本地文件，不存在则从 GitHub 下载"""
+    # 1. 尝试本地
+    if os.path.exists(LOCAL_FILE):
+        try:
+            with open(LOCAL_FILE, 'r') as f:
+                raw = f.read().strip()
+                if raw and raw != '[]':
+                    return json.loads(raw)
+        except (json.JSONDecodeError, IOError):
+            pass
 
+    # 2. 从 GitHub data 分支下载
     try:
-        with open(DATA_FILE, 'r') as f:
-            raw = f.read().strip()
-            if not raw:
-                return 0
-            records = json.loads(raw)
-    except (json.JSONDecodeError, IOError):
-        return 0
+        with urlopen(BACKUP_URL, timeout=10) as resp:
+            raw = resp.read().decode('utf-8').strip()
+            if raw and raw != '[]':
+                return json.loads(raw)
+    except (URLError, Exception):
+        pass
 
+    return []
+
+
+def restore_checkins(db):
+    """恢复签到记录"""
+    records = _load_records()
     if not records:
         return 0
 
@@ -32,7 +48,6 @@ def restore_checkins(db):
         try:
             person_id = int(r['person_id'])
             check_date = date.fromisoformat(r['check_date'])
-            # 跳过已存在的记录
             existing = Checkin.query.filter_by(
                 person_id=person_id, check_date=check_date
             ).first()
@@ -44,8 +59,9 @@ def restore_checkins(db):
                     checked_at = datetime.fromisoformat(r['checked_at'])
                 except (ValueError, TypeError):
                     pass
-            c = Checkin(person_id=person_id, check_date=check_date, checked_at=checked_at)
-            db.session.add(c)
+            db.session.add(Checkin(
+                person_id=person_id, check_date=check_date, checked_at=checked_at
+            ))
             restored += 1
         except (KeyError, ValueError):
             continue
